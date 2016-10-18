@@ -7,67 +7,15 @@ import config
 import time
 import requests
 import json
-
+from zstack_base_demo import zstack_base_api
 reload(sys)
 sys.setdefaultencoding('utf-8')
 
 class zstack_volume_api:
     def __init__(self):
         self.header = {"Content-Type": "application/json"}
-        self.url = config.URL
-        self.url_result = config.URL_RESULT
-        self.name = config.NAME
-        self.password = config.PASSWORD
-
-        self.UUID = self.login()
-        # pass
-
-    def query_until_done(self, job_uuid):
-        # conn.request("GET", "/zstack/api/result/%s" % job_uuid)
-        request = requests.get(self.url_result + str(job_uuid))
-
-        response = json.loads(request.content)
-        # rsp = json.loads(rsp_body)
-        if response["state"] == "Done":
-            return response["state"]
-
-        time.sleep(1)
-        print "Job[uuid:%s] is still in processing" % job_uuid
-        return self.query_until_done(job_uuid)
-
-    def api_call(self, session_uuid, api_id, api_content):
-        if session_uuid:
-            api_content["session"] = {"uuid": session_uuid}
-        api_body = {api_id: api_content}
-
-        request = requests.post(self.url, data=json.dumps(api_body), headers=self.header)
-        response = json.loads(request.content)
-        response_code = request.status_code
-        if "result" in response.keys():
-            result = json.loads(response['result'])
-        else:
-            result = response
-        return result, response_code
-
-    def error_if_fail(self, rsp):
-        success = rsp.values()[0]["success"]
-        if not success:
-            error = rsp.values()[0]["error"]
-            raise Exception("failed to login, %s" % json.dumps(error))
-
-    def login(self):
-        content = {
-            "accountName": self.name,
-            "password": self.password
-        }
-
-        rsp, rsp_code = self.api_call(None, "org.zstack.header.identity.APILogInByAccountMsg", content)
-        self.error_if_fail(rsp)
-
-        session_uuid = rsp.values()[0]["inventory"]["uuid"]
-
-        print "successfully login, session uuid is: %s" % session_uuid
-        return session_uuid
+        self.base = zstack_base_api()
+        self.UUID = self.base.UUID
 
     def create_dataVolume_from_diskOffering(self, name, diskOfferingUuid):
         '''
@@ -97,11 +45,11 @@ class zstack_volume_api:
             "description": "Create a Data Volume %s" % name
         }
 
-        rsp, rsp_code = self.api_call(self.UUID, "org.zstack.storage.backup.sftp.APIAddSftpBackupStorageMsg", content)
+        rsp, rsp_code = self.base.api_call(self.UUID, "org.zstack.storage.backup.sftp.APIAddSftpBackupStorageMsg", content)
         if rsp_code == 200:
             # self.error_if_fail(rsp)
             job_uuid = rsp['uuid']
-            status = self.query_until_done(job_uuid)
+            status = self.base.query_until_done(job_uuid)
             print "successfully Create a Data Volume %s From a Disk Offering, status %s" % (name, status)
         else:
             print "Found Error in API requests.pls check!"
@@ -114,11 +62,11 @@ class zstack_volume_api:
             "description": "Create a Data Volume %s" % name
         }
 
-        rsp, rsp_code = self.api_call(self.UUID, "org.zstack.storage.backup.sftp.APIAddSftpBackupStorageMsg", content)
+        rsp, rsp_code = self.base.api_call(self.UUID, "org.zstack.storage.backup.sftp.APIAddSftpBackupStorageMsg", content)
         if rsp_code == 200:
             # self.error_if_fail(rsp)
             job_uuid = rsp['uuid']
-            status = self.query_until_done(job_uuid)
+            status = self.base.query_until_done(job_uuid)
             print "successfully Create Data Volume %s From an Image, status %s" % (name, status)
         else:
             print "Found Error in API requests.pls check!"
@@ -131,11 +79,11 @@ class zstack_volume_api:
             "description": "Create a Data Volume %s" % name
         }
 
-        rsp, rsp_code = self.api_call(self.UUID, "org.zstack.storage.backup.sftp.APIAddSftpBackupStorageMsg", content)
+        rsp, rsp_code = self.base.api_call(self.UUID, "org.zstack.storage.backup.sftp.APIAddSftpBackupStorageMsg", content)
         if rsp_code == 200:
             # self.error_if_fail(rsp)
             job_uuid = rsp['uuid']
-            status = self.query_until_done(job_uuid)
+            status = self.base.query_until_done(job_uuid)
             print "successfully Create Data Volume %s From a Volume Snapshot, status %s" % (name, status)
         else:
             print "Found Error in API requests.pls check!"
@@ -157,11 +105,11 @@ class zstack_volume_api:
             "uuid": uuid
         }
 
-        rsp, rsp_code = self.api_call(self.UUID, "org.zstack.header.storage.backup.APIDeleteBackupStorageMsg", content)
+        rsp, rsp_code = self.base.api_call(self.UUID, "org.zstack.header.storage.backup.APIDeleteBackupStorageMsg", content)
         if rsp_code == 200:
             # self.error_if_fail(rsp)
             job_uuid = rsp['uuid']
-            status = self.query_until_done(job_uuid)
+            status = self.base.query_until_done(job_uuid)
             print "successfully Delete Data Volume %s, status %s" % (uuid, status)
         else:
             print "Found Error in API requests.pls check!"
@@ -184,40 +132,16 @@ class zstack_volume_api:
             "uuid": uuid,
             "stateEvent": stateEvent
         }
-        rsp, rsp_code = self.api_call(self.UUID, "org.zstack.header.storage.backup.APIChangeBackupStorageStateMsg", content)
+        rsp, rsp_code = self.base.api_call(self.UUID, "org.zstack.header.storage.backup.APIChangeBackupStorageStateMsg", content)
         if rsp_code == 200:
             # self.error_if_fail(rsp)
             job_uuid = rsp['uuid']
-            status = self.query_until_done(job_uuid)
+            status = self.base.query_until_done(job_uuid)
 
             print "successfully Change Volume State %s to %s, status %s" % (uuid, stateEvent, status)
         else:
             print "Found Error in API requests.pls check!"
         # pass
-
-    # def reconnect_backupstorage(self, uuid):
-    #     '''
-    #     request: {
-    #         "org.zstack.storage.backup.sftp.APIReconnectSftpBackupStorageMsg": {
-    #             "uuid": "950c512d895d4686aec475555b917ac2",
-    #             "session": {
-    #               "uuid": "2f918a2b95624f88ae00f524242aeb4a"
-    #             }
-    #         }
-    #     }
-    #     :param uuid: 备份存储的uuid
-    #     :return:
-    #     '''
-    #     content = {
-    #         "uuid": uuid
-    #     }
-    #     rsp, rsp_code = self.api_call(self.UUID, "org.zstack.storage.backup.sftp.APIReconnectSftpBackupStorageMsg", content)
-    #     # self.error_if_fail(rsp)
-    #     job_uuid = rsp['uuid']
-    #     status = self.query_until_done(job_uuid)
-    #
-    #     print "successfully Reconnect Primary Storage %s, status %s" % (uuid, status)
-    #     # pass
 
     def attach_dataVolume_to_Vm(self, volumeUuid, vmInstanceUuid):
         """
@@ -239,11 +163,11 @@ class zstack_volume_api:
             "vmInstanceUuid": vmInstanceUuid
         }
 
-        rsp, rsp_code = self.api_call(self.UUID, "org.zstack.header.storage.backup.APIAttachBackupStorageToZoneMsg", content)
+        rsp, rsp_code = self.base.api_call(self.UUID, "org.zstack.header.storage.backup.APIAttachBackupStorageToZoneMsg", content)
         if rsp_code == 200:
             # self.error_if_fail(rsp)
             job_uuid = rsp['uuid']
-            status = self.query_until_done(job_uuid)
+            status = self.base.query_until_done(job_uuid)
 
             print "successfully Attach DataVolume %s To Vm %s, status %s" % (volumeUuid, vmInstanceUuid, status)
         else:
@@ -268,12 +192,12 @@ class zstack_volume_api:
             "uuid": uuid
         }
 
-        rsp, rsp_code = self.api_call(self.UUID, "org.zstack.header.storage.backup.APIDetachBackupStorageFromZoneMsg",
+        rsp, rsp_code = self.base.api_call(self.UUID, "org.zstack.header.storage.backup.APIDetachBackupStorageFromZoneMsg",
                                       content)
         if rsp_code == 200:
             # self.error_if_fail(rsp)
             job_uuid = rsp['uuid']
-            status = self.query_until_done(job_uuid)
+            status = self.base.query_until_done(job_uuid)
 
             print "successfully Detach DataVolume State %s From Vm %s, status %s" % (backupStorageUuid, zoneUuid, status)
         else:
@@ -299,9 +223,9 @@ class zstack_volume_api:
                 }
             ]
         }
-        rsp, rsp_code = self.api_call(self.UUID, "org.zstack.header.storage.backup.APIQueryBackupStorageMsg", content)
+        rsp, rsp_code = self.base.api_call(self.UUID, "org.zstack.header.storage.backup.APIQueryBackupStorageMsg", content)
         if rsp_code == 200:
-            self.error_if_fail(rsp)
+            self.base.error_if_fail(rsp)
             # job_uuid = rsp['uuid']
             # status = self.query_until_done(job_uuid)
 
@@ -330,9 +254,9 @@ class zstack_volume_api:
                 }
             ]
         }
-        rsp, rsp_code = self.api_call(self.UUID, "org.zstack.header.storage.backup.APIQueryBackupStorageMsg", content)
+        rsp, rsp_code = self.base.api_call(self.UUID, "org.zstack.header.storage.backup.APIQueryBackupStorageMsg", content)
         if rsp_code == 200:
-            self.error_if_fail(rsp)
+            self.base.error_if_fail(rsp)
             # job_uuid = rsp['uuid']
             # status = self.query_until_done(job_uuid)
 
@@ -356,9 +280,9 @@ class zstack_volume_api:
             "conditions": []
         }
 
-        rsp, rsp_code = self.api_call(self.UUID, "org.zstack.header.storage.backup.APIQueryBackupStorageMsg", content)
+        rsp, rsp_code = self.base.api_call(self.UUID, "org.zstack.header.storage.backup.APIQueryBackupStorageMsg", content)
         if rsp_code == 200:
-            self.error_if_fail(rsp)
+            self.base.error_if_fail(rsp)
             # job_uuid = rsp['uuid']
             # status = self.query_until_done(job_uuid)
             print "successfully Query All Backup Storage %s" % (rsp)
@@ -371,9 +295,9 @@ class zstack_volume_api:
 
     def logout(self, session_uuid):
         content = {"sessionUuid": session_uuid}
-        rsp, rsp_code = self.api_call(None, "org.zstack.header.identity.APILogOutMsg", content)
+        rsp, rsp_code = self.base.api_call(None, "org.zstack.header.identity.APILogOutMsg", content)
         if rsp_code == 200:
-            self.error_if_fail(rsp)
+            self.base.error_if_fail(rsp)
             print "successfully logout"
         else:
             print "Found Error in API requests. Pls check"
@@ -381,16 +305,18 @@ class zstack_volume_api:
 
 if __name__ == '__main__':
     new_zs = zstack_backup_storage_api()
-
-    # session_uuid = new_zs.login()
-    # new_zs.add_sftp_backupstorage('bs_yuan', '/root', '10.0.89.18', 'root', 'Skt6edg')
-    # new_zs.delete_backupstorage('0e3292931b88447cb991483890df404c')
-    # new_zs.change_backupstorage_state('70a82158faf241e98af898a79d906490', 'enable')
-    # new_zs.reconnect_backupstorage('70a82158faf241e98af898a79d906490')
-    # new_zs.detach_backup_storage_from_zone('70a82158faf241e98af898a79d906490', 'c9df649b419243b597b1dec99b90833f')
-    # new_zs.attach_backup_storage_to_zone('70a82158faf241e98af898a79d906490', 'c9df649b419243b597b1dec99b90833f')
-    # new_zs.query_all_backupstorage()
-    new_zs.query_backupstorage_by_uuid(uuid='70a82158faf241e98af898a79d906490')
-    # new_zs.query_backupstorage_by_name('Backup_Storage-1')
+    try:
+        # session_uuid = new_zs.login()
+        # new_zs.add_sftp_backupstorage('bs_yuan', '/root', '10.0.89.18', 'root', 'Skt6edg')
+        # new_zs.delete_backupstorage('0e3292931b88447cb991483890df404c')
+        # new_zs.change_backupstorage_state('70a82158faf241e98af898a79d906490', 'enable')
+        # new_zs.reconnect_backupstorage('70a82158faf241e98af898a79d906490')
+        # new_zs.detach_backup_storage_from_zone('70a82158faf241e98af898a79d906490', 'c9df649b419243b597b1dec99b90833f')
+        # new_zs.attach_backup_storage_to_zone('70a82158faf241e98af898a79d906490', 'c9df649b419243b597b1dec99b90833f')
+        # new_zs.query_all_backupstorage()
+        new_zs.query_backupstorage_by_uuid(uuid='70a82158faf241e98af898a79d906490')
+        # new_zs.query_backupstorage_by_name('Backup_Storage-1')
+    except Exception, e:
+        print "执行错误！", e
 
     new_zs.logout(new_zs.UUID)

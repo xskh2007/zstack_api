@@ -2,11 +2,7 @@
 #coding=utf-8
 __author__ = 'yuanbin'
 import sys
-import os
-import config
-import time
-import requests
-import json
+from zstack_base_demo import zstack_base_api
 
 reload(sys)
 sys.setdefaultencoding('utf-8')
@@ -14,59 +10,8 @@ sys.setdefaultencoding('utf-8')
 class zstack_primarystorage_api:
     def __init__(self):
         self.header = {"Content-Type": "application/json"}
-        self.url = config.URL
-        self.url_result = config.URL_RESULT
-        self.name = config.NAME
-        self.password = config.PASSWORD
-
-        self.UUID = self.login()
-        # pass
-
-    def query_until_done(self, job_uuid):
-        # conn.request("GET", "/zstack/api/result/%s" % job_uuid)
-        request = requests.get(self.url_result + str(job_uuid))
-
-        response = json.loads(request.content)
-        # rsp = json.loads(rsp_body)
-        if response["state"] == "Done":
-            return response["state"]
-
-        time.sleep(1)
-        print "Job[uuid:%s] is still in processing" % job_uuid
-        return self.query_until_done(job_uuid)
-
-    def api_call(self, session_uuid, api_id, api_content):
-        if session_uuid:
-            api_content["session"] = {"uuid": session_uuid}
-        api_body = {api_id: api_content}
-
-        request = requests.post(self.url, data=json.dumps(api_body), headers=self.header)
-        response = json.loads(request.content)
-        if "result" in response.keys():
-            result = json.loads(response['result'])
-        else:
-            result = response
-        return result
-
-    def error_if_fail(self, rsp):
-        success = rsp.values()[0]["success"]
-        if not success:
-            error = rsp.values()[0]["error"]
-            raise Exception("failed to login, %s" % json.dumps(error))
-
-    def login(self):
-        content = {
-            "accountName": self.name,
-            "password": self.password
-        }
-
-        rsp = self.api_call(None, "org.zstack.header.identity.APILogInByAccountMsg", content)
-        self.error_if_fail(rsp)
-
-        session_uuid = rsp.values()[0]["inventory"]["uuid"]
-
-        print "successfully login, session uuid is: %s" % session_uuid
-        return session_uuid
+        self.base = zstack_base_api()
+        self.UUID = self.base.UUID
 
     def add_nfs_primarystorage(self, name, zoneUuid, url):
 
@@ -77,10 +22,10 @@ class zstack_primarystorage_api:
             "description": "Add NFS Primary Storage %s" % name
         }
 
-        rsp = self.api_call(self.UUID, "org.zstack.storage.primary.local.APIAddNfsPrimaryStorageMsg", content)
+        rsp = self.base.api_call(self.UUID, "org.zstack.storage.primary.local.APIAddNfsPrimaryStorageMsg", content)
         # self.error_if_fail(rsp)
         job_uuid = rsp['uuid']
-        status = self.query_until_done(job_uuid)
+        status = self.base.query_until_done(job_uuid)
 
         print "successfully Add NFS Primary Storage %s, status %s" % (name, status)
         # pass
@@ -107,10 +52,10 @@ class zstack_primarystorage_api:
             "description": "Add local Primary Storage %s" % name
         }
 
-        rsp = self.api_call(self.UUID, "org.zstack.storage.primary.local.APIAddLocalPrimaryStorageMsg", content)
+        rsp = self.base.api_call(self.UUID, "org.zstack.storage.primary.local.APIAddLocalPrimaryStorageMsg", content)
         # self.error_if_fail(rsp)
         job_uuid = rsp['uuid']
-        status = self.query_until_done(job_uuid)
+        status = self.base.query_until_done(job_uuid)
 
         print "successfully Add local Primary Storage %s, status %s" % (name, status)
 
@@ -129,10 +74,10 @@ class zstack_primarystorage_api:
             "uuid": uuid
         }
 
-        rsp = self.api_call(self.UUID, "org.zstack.header.storage.primary.APIDeletePrimaryStorageMsg", content)
+        rsp = self.base.api_call(self.UUID, "org.zstack.header.storage.primary.APIDeletePrimaryStorageMsg", content)
         # self.error_if_fail(rsp)
         job_uuid = rsp['uuid']
-        status = self.query_until_done(job_uuid)
+        status = self.base.query_until_done(job_uuid)
         print "successfully delete Primary Storage %s, status %s" % (uuid, status)
 
         # return self.UUID
@@ -155,10 +100,10 @@ class zstack_primarystorage_api:
             "uuid": uuid,
             "stateEvent": stateEvent
         }
-        rsp = self.api_call(self.UUID, "org.zstack.header.storage.primary.APIChangePrimaryStorageStateMsg", content)
+        rsp = self.base.api_call(self.UUID, "org.zstack.header.storage.primary.APIChangePrimaryStorageStateMsg", content)
         # self.error_if_fail(rsp)
         job_uuid = rsp['uuid']
-        status = self.query_until_done(job_uuid)
+        status = self.base.query_until_done(job_uuid)
 
         print "successfully Change Primary Storage State %s to %s, status %s" % (uuid, stateEvent, status)
         # pass
@@ -177,10 +122,10 @@ class zstack_primarystorage_api:
         content = {
             "uuid": uuid
         }
-        rsp = self.api_call(self.UUID, "org.zstack.header.storage.primary.APIReconnectPrimaryStorageMsg", content)
+        rsp = self.base.api_call(self.UUID, "org.zstack.header.storage.primary.APIReconnectPrimaryStorageMsg", content)
         # self.error_if_fail(rsp)
         job_uuid = rsp['uuid']
-        status = self.query_until_done(job_uuid)
+        status = self.base.query_until_done(job_uuid)
 
         print "successfully Reconnect Primary Storage %s, status %s" % (uuid, status)
         # pass
@@ -205,8 +150,8 @@ class zstack_primarystorage_api:
                 }
             ]
         }
-        rsp = self.api_call(self.UUID, "org.zstack.header.storage.primary.APIQueryPrimaryStorageMsg", content)
-        self.error_if_fail(rsp)
+        rsp = self.base.api_call_other(self.UUID, "org.zstack.header.storage.primary.APIQueryPrimaryStorageMsg", content)
+        self.base.error_if_fail(rsp)
         # job_uuid = rsp['uuid']
         # status = self.query_until_done(job_uuid)
 
@@ -234,8 +179,8 @@ class zstack_primarystorage_api:
                 }
             ]
         }
-        rsp = self.api_call(self.UUID, "org.zstack.header.storage.primary.APIQueryPrimaryStorageMsg", content)
-        self.error_if_fail(rsp)
+        rsp = self.base.api_call(self.UUID, "org.zstack.header.storage.primary.APIQueryPrimaryStorageMsg", content)
+        self.base.error_if_fail(rsp)
         # job_uuid = rsp['uuid']
         # status = self.query_until_done(job_uuid)
 
@@ -256,8 +201,8 @@ class zstack_primarystorage_api:
             "conditions": []
         }
 
-        rsp = self.api_call(self.UUID, "org.zstack.header.storage.primary.APIQueryPrimaryStorageMsg", content)
-        self.error_if_fail(rsp)
+        rsp = self.base.api_call(self.UUID, "org.zstack.header.storage.primary.APIQueryPrimaryStorageMsg", content)
+        self.base.error_if_fail(rsp)
         # job_uuid = rsp['uuid']
         # status = self.query_until_done(job_uuid)
 
@@ -269,8 +214,8 @@ class zstack_primarystorage_api:
 
     def logout(self, session_uuid):
         content = {"sessionUuid": session_uuid}
-        rsp = self.api_call(None, "org.zstack.header.identity.APILogOutMsg", content)
-        self.error_if_fail(rsp)
+        rsp = self.base.api_call(None, "org.zstack.header.identity.APILogOutMsg", content)
+        self.base.error_if_fail(rsp)
 
         print "successfully logout"
         # pass
@@ -278,14 +223,16 @@ class zstack_primarystorage_api:
 
 if __name__ == '__main__':
     new_zs = zstack_primarystorage_api()
-
-    # session_uuid = new_zs.login()
-    # new_zs.add_local_primarystorage('ps-yuan', 'c9df649b419243b597b1dec99b90833f', url='/home')
-    # new_zs.delete_primarystorage('8352683f89fa46ad843986d54d2bbc31')
-    # new_zs.change_primarystorage_state('82cf947ae8b44c479c5c30d183e7ae39', 'enable')
-    # new_zs.reconnect_primarystorage('82cf947ae8b44c479c5c30d183e7ae39')
-    # new_zs.query_all_primarystorage()
-    new_zs.query_primarystorage_by_name('ps-yuan')
-    new_zs.query_primarystorage_by_uuid('82cf947ae8b44c479c5c30d183e7ae39')
+    try:
+        # session_uuid = new_zs.login()
+        # new_zs.add_local_primarystorage('ps-yuan', 'c9df649b419243b597b1dec99b90833f', url='/home')
+        # new_zs.delete_primarystorage('8352683f89fa46ad843986d54d2bbc31')
+        # new_zs.change_primarystorage_state('82cf947ae8b44c479c5c30d183e7ae39', 'enable')
+        # new_zs.reconnect_primarystorage('82cf947ae8b44c479c5c30d183e7ae39')
+        # new_zs.query_all_primarystorage()
+        new_zs.query_primarystorage_by_name('ps-yuan')
+        new_zs.query_primarystorage_by_uuid('82cf947ae8b44c479c5c30d183e7ae39')
+    except Exception,e:
+        print "执行错误！", e
 
     new_zs.logout(new_zs.UUID)

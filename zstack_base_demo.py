@@ -35,6 +35,19 @@ class zstack_base_api:
         print "Job[uuid:%s] is still in processing" % job_uuid
         return self.query_until_done(job_uuid)
 
+    def query_until_done_other(self, job_uuid):
+        # conn.request("GET", "/zstack/api/result/%s" % job_uuid)
+        request = requests.get(self.url_result + str(job_uuid))
+
+        response = json.loads(request.content)
+        # rsp = json.loads(rsp_body)
+        if response["state"] == "Done":
+            return response
+
+        time.sleep(1)
+        print "Job[uuid:%s] is still in processing" % job_uuid
+        return self.query_until_done(job_uuid)
+
     def api_call(self, session_uuid, api_id, api_content):
         if session_uuid:
             api_content["session"] = {"uuid": session_uuid}
@@ -47,6 +60,20 @@ class zstack_base_api:
         else:
             result = response
         return result
+
+    def api_call_other(self, session_uuid, api_id, api_content):
+        if session_uuid:
+            api_content["session"] = {"uuid": session_uuid}
+        api_body = {api_id: api_content}
+
+        request = requests.post(self.url, data=json.dumps(api_body), headers=self.header)
+        response = json.loads(request.content)
+        response_code = request.status_code
+        if "result" in response.keys():
+            result = json.loads(response['result'])
+        else:
+            result = response
+        return result, response_code
 
     def error_if_fail(self, rsp):
         success = rsp.values()[0]["success"]

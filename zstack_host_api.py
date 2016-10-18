@@ -7,66 +7,15 @@ import config
 import time
 import requests
 import json
-
+from zstack_base_demo import zstack_base_api
 reload(sys)
 sys.setdefaultencoding('utf-8')
 
 class zstack_host_api:
     def __init__(self):
         self.header = {"Content-Type": "application/json"}
-        self.url = config.URL
-        self.url_result = config.URL_RESULT
-        self.name = config.NAME
-        self.password = config.PASSWORD
-
-        self.UUID = self.login()
-        # pass
-
-    def query_until_done(self, job_uuid):
-        # conn.request("GET", "/zstack/api/result/%s" % job_uuid)
-        request = requests.get(self.url_result + str(job_uuid))
-
-        response = json.loads(request.content)
-        # rsp = json.loads(rsp_body)
-        if response["state"] == "Done":
-            return response["state"]
-
-        time.sleep(1)
-        print "Job[uuid:%s] is still in processing" % job_uuid
-        return self.query_until_done(job_uuid)
-
-    def api_call(self, session_uuid, api_id, api_content):
-        if session_uuid:
-            api_content["session"] = {"uuid": session_uuid}
-        api_body = {api_id: api_content}
-
-        request = requests.post(self.url, data=json.dumps(api_body), headers=self.header)
-        response = json.loads(request.content)
-        if "result" in response.keys():
-            result = json.loads(response['result'])
-        else:
-            result = response
-        return result
-
-    def error_if_fail(self, rsp):
-        success = rsp.values()[0]["success"]
-        if not success:
-            error = rsp.values()[0]["error"]
-            raise Exception("failed to login, %s" % json.dumps(error))
-
-    def login(self):
-        content = {
-            "accountName": self.name,
-            "password": self.password
-        }
-
-        rsp = self.api_call(None, "org.zstack.header.identity.APILogInByAccountMsg", content)
-        self.error_if_fail(rsp)
-
-        session_uuid = rsp.values()[0]["inventory"]["uuid"]
-
-        print "successfully login, session uuid is: %s" % session_uuid
-        return session_uuid
+        self.base = zstack_base_api()
+        self.UUID = self.base.UUID
 
     def add_kvm_host(self, name, clusterUuid, managementIp, username, password):
         '''
@@ -97,10 +46,10 @@ class zstack_host_api:
             "description": "Add KVM Host: %s" % name
         }
 
-        rsp = self.api_call(self.UUID, "org.zstack.kvm.APIAddKVMHostMsg", content)
+        rsp = self.base.api_call(self.UUID, "org.zstack.kvm.APIAddKVMHostMsg", content)
         # self.error_if_fail(rsp)
         job_uuid = rsp['uuid']
-        status = self.query_until_done(job_uuid)
+        status = self.base.query_until_done(job_uuid)
 
         print "successfully created %s, status %s" % (name, status)
         # pass
@@ -118,10 +67,10 @@ class zstack_host_api:
         '''
         content = {"uuid": uuid}
 
-        rsp = self.api_call(self.UUID, "org.zstack.header.host.APIDeleteHostMsg", content)
+        rsp = self.base.api_call(self.UUID, "org.zstack.header.host.APIDeleteHostMsg", content)
         # self.error_if_fail(rsp)
         job_uuid = rsp['uuid']
-        status = self.query_until_done(job_uuid)
+        status = self.base.query_until_done(job_uuid)
         print "successfully delete Host %s, status %s" % (uuid, status)
 
         # return self.UUID
@@ -169,10 +118,10 @@ class zstack_host_api:
             "uuid": uuid,
             "stateEvent": stateEvent
         }
-        rsp = self.api_call(self.UUID, "org.zstack.header.host.APIChangeHostStateMsg", content)
+        rsp = self.base.api_call(self.UUID, "org.zstack.header.host.APIChangeHostStateMsg", content)
         # self.error_if_fail(rsp)
         job_uuid = rsp['uuid']
-        status = self.query_until_done(job_uuid)
+        status = self.base.query_until_done(job_uuid)
 
         print "successfully Change Host State %s, status %s" % (uuid, status)
         # pass
@@ -196,10 +145,10 @@ class zstack_host_api:
         content = {
             "uuid": uuid
         }
-        rsp = self.api_call(self.UUID, "org.zstack.header.host.APIChangeHostStateMsg", content)
+        rsp = self.base.api_call(self.UUID, "org.zstack.header.host.APIChangeHostStateMsg", content)
         # self.error_if_fail(rsp)
         job_uuid = rsp['uuid']
-        status = self.query_until_done(job_uuid)
+        status = self.base.query_until_done(job_uuid)
 
         print "successfully Reconnect Host %s, status %s" % (uuid, status)
         # pass
@@ -224,8 +173,8 @@ class zstack_host_api:
                 }
             ]
         }
-        rsp = self.api_call(self.UUID, "org.zstack.header.host.APIQueryHostMsg", content)
-        self.error_if_fail(rsp)
+        rsp = self.base.api_call(self.UUID, "org.zstack.header.host.APIQueryHostMsg", content)
+        self.base.error_if_fail(rsp)
         # job_uuid = rsp['uuid']
         # status = self.query_until_done(job_uuid)
 
@@ -252,8 +201,8 @@ class zstack_host_api:
                 }
             ]
         }
-        rsp = self.api_call(self.UUID, "org.zstack.header.host.APIQueryHostMsg", content)
-        self.error_if_fail(rsp)
+        rsp = self.base.api_call(self.UUID, "org.zstack.header.host.APIQueryHostMsg", content)
+        self.base.error_if_fail(rsp)
         # job_uuid = rsp['uuid']
         # status = self.query_until_done(job_uuid)
 
@@ -319,8 +268,8 @@ class zstack_host_api:
             "conditions": []
         }
 
-        rsp = self.api_call(self.UUID, "org.zstack.header.host.APIQueryHostMsg", content)
-        self.error_if_fail(rsp)
+        rsp = self.base.api_call(self.UUID, "org.zstack.header.host.APIQueryHostMsg", content)
+        self.base.error_if_fail(rsp)
         # job_uuid = rsp['uuid']
         # status = self.query_until_done(job_uuid)
 
@@ -331,8 +280,8 @@ class zstack_host_api:
 
     def logout(self, session_uuid):
         content = {"sessionUuid": session_uuid}
-        rsp = self.api_call(None, "org.zstack.header.identity.APILogOutMsg", content)
-        self.error_if_fail(rsp)
+        rsp = self.base.api_call(None, "org.zstack.header.identity.APILogOutMsg", content)
+        self.base.error_if_fail(rsp)
 
         print "successfully logout"
         # pass
@@ -343,10 +292,10 @@ if __name__ == '__main__':
 
     # session_uuid = new_zs.login()
     # new_zs.delete_host('96df40c9e1ad4622a5f5504920c628ac')
-    new_zs.add_kvm_host('host-yb', 'b0f4a5bc13ca496ca69df5461fe4a442', '10.0.89.18', 'root', 'Skt6edg')
+    # new_zs.add_kvm_host('host-yy', '4cc9847534384039b323e8d2fff4b606', '10.0.89.18', 'root', 'Skt6edg')
     # new_zs.change_host_state('848520f29011436c8685e520b87dab23', 'enable')
     # new_zs.reconnect_host('848520f29011436c8685e520b87dab23')
-    # new_zs.query_all_host()
+    new_zs.query_all_host()
     # new_zs.query_host_by_ip('10.0.1.221')
     # new_zs.query_host_by_name('host-yb')
 

@@ -2,11 +2,7 @@
 #coding=utf-8
 __author__ = 'yuanbin'
 import sys
-import os
-import config
-import time
-import requests
-import json
+from zstack_base_demo import zstack_base_api
 
 reload(sys)
 sys.setdefaultencoding('utf-8')
@@ -14,60 +10,8 @@ sys.setdefaultencoding('utf-8')
 class zstack_cluster_api:
     def __init__(self):
         self.header = {"Content-Type": "application/json"}
-        self.url = config.URL
-        self.url_result = config.URL_RESULT
-        self.name = config.NAME
-        self.password = config.PASSWORD
-
-        self.UUID = self.login()
-        # pass
-
-    def query_until_done(self, job_uuid):
-        # conn.request("GET", "/zstack/api/result/%s" % job_uuid)
-        request = requests.get(self.url_result + str(job_uuid))
-
-        response = json.loads(request.content)
-        # rsp = json.loads(rsp_body)
-        if response["state"] == "Done":
-            return response["state"]
-
-        time.sleep(1)
-        print "Job[uuid:%s] is still in processing" % job_uuid
-        return self.query_until_done(job_uuid)
-
-    def api_call(self, session_uuid, api_id, api_content):
-        if session_uuid:
-            api_content["session"] = {"uuid": session_uuid}
-        api_body = {api_id: api_content}
-
-        request = requests.post(self.url, data=json.dumps(api_body), headers=self.header)
-        response = json.loads(request.content)
-        if "result" in response.keys():
-            result = json.loads(response['result'])
-        else:
-            result = response
-        return result
-
-    def error_if_fail(self, rsp):
-        success = rsp.values()[0]["success"]
-        if not success:
-            error = rsp.values()[0]["error"]
-            raise Exception("failed to login, %s" % json.dumps(error))
-
-    def login(self):
-        content = {
-            "accountName": self.name,
-            "password": self.password
-        }
-
-        rsp = self.api_call(None, "org.zstack.header.identity.APILogInByAccountMsg", content)
-        self.error_if_fail(rsp)
-
-        session_uuid = rsp.values()[0]["inventory"]["uuid"]
-
-        print "successfully login, session uuid is: %s" % session_uuid
-        return session_uuid
-
+        self.base = zstack_base_api()
+        self.UUID = self.base.UUID
 
     """
     zoneUuid        父区域的uuid
@@ -116,10 +60,10 @@ class zstack_cluster_api:
             # "type": type
         }
 
-        rsp = self.api_call(self.UUID, "org.zstack.header.cluster.APICreateClusterMsg", content)
+        rsp = self.base.api_call(self.UUID, "org.zstack.header.cluster.APICreateClusterMsg", content)
         # self.error_if_fail(rsp)
         job_uuid = rsp['uuid']
-        status = self.query_until_done(job_uuid)
+        status = self.base.query_until_done(job_uuid)
 
         print "successfully created %s, status %s" % (name, status)
         # pass
@@ -142,10 +86,10 @@ class zstack_cluster_api:
         '''
         content = {"uuid": uuid}
 
-        rsp = self.api_call(self.UUID, "org.zstack.header.cluster.APIDeleteClusterMsg", content)
+        rsp = self.base.api_call(self.UUID, "org.zstack.header.cluster.APIDeleteClusterMsg", content)
         # self.error_if_fail(rsp)
         job_uuid = rsp['uuid']
-        status = self.query_until_done(job_uuid)
+        status = self.base.query_until_done(job_uuid)
         print "successfully delete %s, status %s" % (uuid, status)
 
         # return self.UUID
@@ -187,10 +131,10 @@ class zstack_cluster_api:
             "stateEvent": stateEvent
         }
 
-        rsp = self.api_call(self.UUID, "org.zstack.header.cluster.APIChangeClusterStateMsg", content)
+        rsp = self.base.api_call(self.UUID, "org.zstack.header.cluster.APIChangeClusterStateMsg", content)
         # self.error_if_fail(rsp)
         job_uuid = rsp['uuid']
-        status = self.query_until_done(job_uuid)
+        status = self.base.query_until_done(job_uuid)
         print "successfully change cluster state %s, status %s" % (uuid, status)
 
     def attach_primary_storage_to_cluster(self, uuid, psuuid):
@@ -238,10 +182,10 @@ class zstack_cluster_api:
             "primaryStorageUuid": psuuid
         }
 
-        rsp = self.api_call(self.UUID, "org.zstack.header.storage.primary.APIAttachPrimaryStorageToClusterMsg", content)
+        rsp = self.base.api_call(self.UUID, "org.zstack.header.storage.primary.APIAttachPrimaryStorageToClusterMsg", content)
         # self.error_if_fail(rsp)
         job_uuid = rsp['uuid']
-        status = self.query_until_done(job_uuid)
+        status = self.base.query_until_done(job_uuid)
         print "successfully Attach Primary Sstorage %s, status %s" % (uuid, status)
 
     def detach_primary_storage_from_cluster(self, uuid, psuuid):
@@ -256,10 +200,10 @@ class zstack_cluster_api:
             "primaryStorageUuid": psuuid
         }
 
-        rsp = self.api_call(self.UUID, "org.zstack.header.storage.primary.APIDetachPrimaryStorageFromClusterMsg", content)
+        rsp = self.base.api_call(self.UUID, "org.zstack.header.storage.primary.APIDetachPrimaryStorageFromClusterMsg", content)
         # self.error_if_fail(rsp)
         job_uuid = rsp['uuid']
-        status = self.query_until_done(job_uuid)
+        status = self.base.query_until_done(job_uuid)
         print "successfully Detach Primary Storage %s, status %s" % (uuid, status)
 
     def attach_l2network_to_cluster(self, uuid, l2uuid):
@@ -267,11 +211,10 @@ class zstack_cluster_api:
             "clusterUuid": uuid,
             "l2NetworkUuid": l2uuid
         }
-        rsp = self.api_call(self.UUID, "org.zstack.header.network.primary.APIAttachL2NetworkToClusterMsg",
-                            content)
+        rsp = self.base.api_call(self.UUID, "org.zstack.header.network.primary.APIAttachL2NetworkToClusterMsg", content)
         # self.error_if_fail(rsp)
         job_uuid = rsp['uuid']
-        status = self.query_until_done(job_uuid)
+        status = self.base.query_until_done(job_uuid)
         print "successfully Attach L2Network To Cluster %s, status %s" % (uuid, status)
         # pass
 
@@ -280,11 +223,11 @@ class zstack_cluster_api:
             "clusterUuid": uuid,
             "l2NetworkUuid": l2uuid
         }
-        rsp = self.api_call(self.UUID, "org.zstack.header.network.primary.APIDetachL2NetworkFromClusterMsg",
+        rsp = self.base.api_call(self.UUID, "org.zstack.header.network.primary.APIDetachL2NetworkFromClusterMsg",
                             content)
         # self.error_if_fail(rsp)
         job_uuid = rsp['uuid']
-        status = self.query_until_done(job_uuid)
+        status = self.base.query_until_done(job_uuid)
         print "successfully Detach L2Network From Cluster %s, status %s" % (uuid, status)
         # pass
 
@@ -330,9 +273,9 @@ class zstack_cluster_api:
                 }
             ]
         }
-        rsp = self.api_call(self.UUID, "org.zstack.header.cluster.APIQueryClusterMsg",
+        rsp = self.base.api_call(self.UUID, "org.zstack.header.cluster.APIQueryClusterMsg",
                             content)
-        self.error_if_fail(rsp)
+        self.base.error_if_fail(rsp)
         # job_uuid = rsp['uuid']
         # status = self.query_until_done(job_uuid)
         print "successfully Query Cluster by cluster uuid %s" % (clusterUuid)
@@ -381,8 +324,8 @@ class zstack_cluster_api:
                 }
             ]
         }
-        rsp = self.api_call(self.UUID, "org.zstack.header.cluster.APIQueryClusterMsg",content)
-        self.error_if_fail(rsp)
+        rsp = self.base.api_call(self.UUID, "org.zstack.header.cluster.APIQueryClusterMsg",content)
+        self.base.error_if_fail(rsp)
         # job_uuid = rsp['uuid']
         # status = self.query_until_done(job_uuid)
         print "successfully Query Cluster by cluster name %s" % (clusterName)
@@ -430,9 +373,9 @@ class zstack_cluster_api:
                 }
             ]
         }
-        rsp = self.api_call(self.UUID, "org.zstack.header.cluster.APIQueryClusterMsg",
+        rsp = self.base.api_call(self.UUID, "org.zstack.header.cluster.APIQueryClusterMsg",
                             content)
-        self.error_if_fail(rsp)
+        self.base.error_if_fail(rsp)
         # job_uuid = rsp['uuid']
         # status = self.query_until_done(job_uuid)
         print "successfully Query Cluster by zone uuid %s" % (zoneUuid)
@@ -440,8 +383,8 @@ class zstack_cluster_api:
 
     def logout(self, session_uuid):
         content = {"sessionUuid": session_uuid}
-        rsp = self.api_call(None, "org.zstack.header.identity.APILogOutMsg", content)
-        self.error_if_fail(rsp)
+        rsp = self.base.api_call(None, "org.zstack.header.identity.APILogOutMsg", content)
+        self.base.error_if_fail(rsp)
 
         print "successfully logout"
         # pass
@@ -449,13 +392,18 @@ class zstack_cluster_api:
 
 if __name__ == '__main__':
     new_zs = zstack_cluster_api()
-    # session_uuid = new_zs.login()
-    new_zs.create_cluster('cluster-yu', 'c9df649b419243b597b1dec99b90833f')
-    # new_zs.delete_cluster('6c965d8775f440efa18471dec8e3b12a')
-    # new_zs.change_cluster_state('f6cf5efe72924ccf90b771d32f610f19', 'enable')
-    # new_zs.attach_primary_storage_to_cluster('f6cf5efe72924ccf90b771d32f610f19', '8438a03dc6e04be38dae8d56207508b2')
-    # new_zs.detach_primary_storage_from_cluster('f6cf5efe72924ccf90b771d32f610f19', '8438a03dc6e04be38dae8d56207508b2')
-    # zone_list = new_zs.query_cluster_by_clustername('cluster-zb01')
-    # zone_list = new_zs.query_cluster_by_clusteruuid('f6cf5efe72924ccf90b771d32f610f19')
+    try:
+        # session_uuid = new_zs.login()
+        new_zs.create_cluster('cluster-16lou', 'c9df649b419243b597b1dec99b90833f')
+        # new_zs.delete_cluster('6c965d8775f440efa18471dec8e3b12a')
+        # new_zs.change_cluster_state('f6cf5efe72924ccf90b771d32f610f19', 'enable')
+        # new_zs.attach_primary_storage_to_cluster('f6cf5efe72924ccf90b771d32f610f19', '8438a03dc6e04be38dae8d56207508b2')
+        # new_zs.detach_primary_storage_from_cluster('f6cf5efe72924ccf90b771d32f610f19', '8438a03dc6e04be38dae8d56207508b2')
+        # zone_list = new_zs.query_cluster_by_clustername('cluster-zb01')
+        # zone_list = new_zs.query_cluster_by_clusteruuid('f6cf5efe72924ccf90b771d32f610f19')
+        # new_zs.attach_l2network_to_cluster('f6cf5efe72924ccf90b771d32f610f19', 'c75585d91b4b4ce5a251dd3ef471302d')
+
+    except Exception, e:
+        print "执行出错！", e
 
     new_zs.logout(new_zs.UUID)
